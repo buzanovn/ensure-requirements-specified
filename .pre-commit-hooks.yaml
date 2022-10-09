@@ -1,0 +1,6 @@
+-   id: ensure-requirements-specified
+    name: Ensure requirements specified
+    description: Check that all requirements files have versions specified
+    entry: ensure-requirements-specified
+    language: python
+    pass_filenames: false
