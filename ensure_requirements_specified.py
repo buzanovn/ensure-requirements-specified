@@ -23,7 +23,7 @@ Installable package:
 Pre-commit hook:
   Add this to your .pre-commit-config.yaml
     -   repo: https://github.com/buzanovn/ensure-requirements-specified
-    rev: v1.0.0
+    rev: v1.1.0
     hooks:
     -   id: ensure-requirements-specified
 """
@@ -85,17 +85,19 @@ def process_many_files(
     return retv, errors
 
 
-def iterate_requirements_files(
+def check_path_is_requirements_file(path: str) -> bool:
+    path = os.path.basename(path)
+    return re.match(REQUIREMENTS_REGEX, path) is not None
+
+
+def iterate_files(
     root_dir: Optional[str] = None,
 ) -> Iterator[str]:
     if root_dir is None:
         root_dir = os.getcwd()
 
     for root, _, files in os.walk(root_dir):
-        for f in files:
-            fullpath = os.path.join(root, f)
-            if re.match(REQUIREMENTS_REGEX, f):
-                yield fullpath
+        yield from (os.path.join(root, f) for f in files)
 
 
 def main(argv: Union[Sequence[str], None] = None) -> int:
@@ -112,15 +114,28 @@ def main(argv: Union[Sequence[str], None] = None) -> int:
         '--verbose', '-v', action='store_true',
         help='Script will output all requirement files processed',
     )
+    parser.add_argument(
+        '--skip-check-filenames', '-s', action='store_true',
+        help='Supress filename check (check any file given)',
+    )
     args = parser.parse_args(argv)
 
-    filenames: Iterator[str]
+    file_path_iterator: Iterator[str]
     if len(args.filenames) == 0:
-        filenames = iterate_requirements_files()
+        file_path_iterator = iterate_files()
     else:
-        filenames = args.filenames
+        file_path_iterator = iter(args.filenames)
 
-    retv, errors = process_many_files(filenames, args.verbose)
+    if args.skip_check_filenames:
+        def file_name_filter_fn(x: str) -> bool:
+            return True
+    else:
+        def file_name_filter_fn(x: str) -> bool:
+            return check_path_is_requirements_file(x)
+
+    file_path_iterator = filter(file_name_filter_fn, file_path_iterator)
+
+    retv, errors = process_many_files(file_path_iterator, args.verbose)
     for err in errors:
         print(err)
 

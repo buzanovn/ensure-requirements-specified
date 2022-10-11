@@ -42,4 +42,3 @@ repos:
         description: Check that all requirements files have versions specified
         entry: python3 ensure_requirements_specified.py -v
         language: python
-        pass_filenames: false
